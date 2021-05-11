@@ -54,25 +54,23 @@ class ECurve:
             raise Exception("x and y must be tuples!")
 
         # P must be part of the curve or has to be the neutral element.
+        # In case it is the neutral element we return Q
         if P != (self.n, self.n):
             if (P[0] ** 3 + self.a * P[0] + self.b) % self.p != (P[1] ** 2) % self.p:
                 raise Exception("P is not part of the curve!")
+        else:
+            return Q
 
         # Q must be part of the curve or has to be the neutral element.
+        # In case it is the neutral element we return P
         if Q != (self.n, self.n):
             if (Q[0] ** 3 + self.a * Q[0] + self.b) % self.p != (Q[1] ** 2) % self.p:
                 raise Exception("Q is not part of the curve!")
-
-        # Check whether P is the neutral element.
-        if P == (self.n, self.n):
-            return Q
-
-        # Check whether Q is the neutral element.
-        elif Q == (self.n, self.n):
-            return P
+        else:
+            return P        
 
         # Check whether the points are the inverse of each other.
-        elif P[0] == Q[0] and -P[1] % self.p == Q[1]:
+        if P[0] == Q[0] and -P[1] % self.p == Q[1]:
             return self.n, self.n
         else:
             # Now is guarenteed that neither of the points is the neutral Element and they both lie on the curve.
