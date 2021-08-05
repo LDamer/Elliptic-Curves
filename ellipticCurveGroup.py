@@ -41,48 +41,59 @@ class ECurve:
             counter += 1
         return counter
 
-    def add(self, P, Q):
-        # Adjust the values of P and Q to the underliying finite field
-        # in case one of their coordinates is negative
-        P[0] = P[0] % self.p
-        P[0] = P[1] % self.p
-        Q[0] = Q[0] % self.p
-        Q[0] = Q[1] % self.p
+    def multiply_with_scalar(self, p, e):
+        l = len(bin(e)[2:])
+        res = (self.n, self.n)
+        for i in range(l):
+            res = self.add(res, res)
+            if e & (1 << (l - i - 1)) == 1 << (l - i - 1):
+                res = self.add(p, res)
+        return res
 
+    def add(self, p, q):
+        """
+        :param p: point on the curve. Negative values allowed.
+        :param q: point on the curve. Negative values allowed.
+        """
         # Check for correct inputs. Both inputs must be of type tupel.
-        if type(P) != type(Q) or type(P) != tuple:
+        if type(p) != type(q) or type(p) != tuple:
             raise Exception("x and y must be tuples!")
 
-        # P must be part of the curve or has to be the neutral element.
-        # In case it is the neutral element we return Q
-        if P != (self.n, self.n):
-            if (P[0] ** 3 + self.a * P[0] + self.b) % self.p != (P[1] ** 2) % self.p:
-                raise Exception("P is not part of the curve!")
+        # p must be part of the curve or has to be the neutral element.
+        # In case it is the neutral element we return q
+        if p != (self.n, self.n):
+            if (p[0] ** 3 + self.a * p[0] + self.b) % self.p != (p[1] ** 2) % self.p:
+                raise Exception("p is not part of the curve!")
         else:
-            return Q
+            return q
 
-        # Q must be part of the curve or has to be the neutral element.
-        # In case it is the neutral element we return P
-        if Q != (self.n, self.n):
-            if (Q[0] ** 3 + self.a * Q[0] + self.b) % self.p != (Q[1] ** 2) % self.p:
-                raise Exception("Q is not part of the curve!")
+        # q must be part of the curve or has to be the neutral element.
+        # In case it is the neutral element we return p
+        if q != (self.n, self.n):
+            if (q[0] ** 3 + self.a * q[0] + self.b) % self.p != (q[1] ** 2) % self.p:
+                raise Exception("q is not part of the curve!")
         else:
-            return P        
+            return p
 
         # Check whether the points are the inverse of each other.
-        if P[0] == Q[0] and -P[1] % self.p == Q[1]:
+        # Every comparison just after modulo reduction for better usability (negative values allowed).
+        # Therefore, you can directly type the inverse of P as (p.x, -p.y) without reducing by yourself modulo p.
+        if p[0] % self.p == q[0] % self.p and (-p[1]) % self.p == q[1] % self.p:
             return self.n, self.n
         else:
-            # Now is guarenteed that neither of the points is the neutral Element and they both lie on the curve.
-            if P == Q:
+            # Now it is guarenteed that neither of the points is the neutral Element and they both lie on the curve.
+            if p[0] % self.p == q[0] % self.p and p[1] % self.p == q[1] % self.p:
                 # In this case we need to perform point multiplication.
-                s = ((3 * P[0] ** 2 + self.a) * pow(2 * P[1], -1, self.p)) % self.p
-                x_3 = (s ** 2 - P[0] - Q[0]) % self.p
-                y_3 = (s * (P[0] - x_3) - P[1]) % self.p
+                # A lot of modulo reduction because negative values are allowed.
+                s = ((3 * p[0] ** 2 + self.a) * pow(2 * p[1] % self.p, -1, self.p)) % self.p
+                x_3 = (s ** 2 - p[0] - q[0]) % self.p
+                y_3 = (s * (p[0] - x_3) - p[1]) % self.p
                 return x_3, y_3
             else:
-                # In this case we nee to perform point addition.               
-                s = (((Q[1] - P[1]) % self.p) * pow(Q[0] - P[0], -1, self.p)) % self.p
-                x_3 = (s ** 2 - P[0] - Q[0]) % self.p
-                y_3 = (s * (P[0] - x_3) - P[1]) % self.p
+                # In this case we need to perform point addition.
+                # A lot of modulo reduction because negative values are allowed.
+                s = (((q[1] - p[1]) % self.p) * pow((q[0] % self.p) - (p[0] % self.p), -1, self.p)) % self.p
+                x_3 = (s ** 2 - p[0] - q[0]) % self.p
+                y_3 = (s * (p[0] - x_3) - p[1]) % self.p
                 return x_3, y_3
+
